@@ -3,7 +3,7 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method Not Allowed' });
   }
 
-  const { text, voiceId = '21m00Tcm4TlvDq8ikWAM' } = req.body;
+  const { text, voiceId = '21m00Tcm4TlvDq8ikWAM', voiceSettings } = req.body;
 
   if (!text) {
     return res.status(400).json({ error: 'Text is required' });
@@ -27,9 +27,10 @@ export default async function handler(req, res) {
       body: JSON.stringify({
         text: text,
         model_id: 'eleven_turbo_v2_5',
-        voice_settings: {
+        voice_settings: voiceSettings || {
           stability: 0.5,
           similarity_boost: 0.75,
+          style: 0.3
         },
       }),
     });

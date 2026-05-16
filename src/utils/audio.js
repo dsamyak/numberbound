@@ -91,15 +91,37 @@ export function speak(text, enabled = true, style = 'statement') {
     window.speechSynthesis?.cancel(); // Cancel any fallback speech
     isSpeaking = true;
 
+    // Map our pedagogical styles to ElevenLabs emotional settings
+    const getElevenLabsSettings = (speechStyle) => {
+      switch (speechStyle) {
+        case 'celebration': 
+          return { stability: 0.3, similarity_boost: 0.8, style: 0.8 }; // High emotion, very expressive
+        case 'encouragement': 
+          return { stability: 0.35, similarity_boost: 0.8, style: 0.6 }; // Warm, expressive
+        case 'question': 
+          return { stability: 0.4, similarity_boost: 0.8, style: 0.4 }; // Inquisitive tone
+        case 'thinking': 
+          return { stability: 0.6, similarity_boost: 0.8, style: 0.1 }; // Calmer, flatter tone
+        case 'emphasis': 
+          return { stability: 0.5, similarity_boost: 0.8, style: 0.5 }; // Clear and deliberate
+        default: // statement, instruction
+          return { stability: 0.5, similarity_boost: 0.75, style: 0.3 }; // Balanced
+      }
+    };
+
     try {
-      let audioUrl = elevenLabsCache.get(text);
+      // Cache key now includes style so we don't mix up emotional states for the same text
+      const cacheKey = `${text}_${style}`;
+      let audioUrl = elevenLabsCache.get(cacheKey);
       
       if (!audioUrl) {
+        const voiceSettings = getElevenLabsSettings(style);
+
         // 1. Try hitting the Vercel secure backend first
         let response = await fetch(`/api/elevenlabs`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ text, voiceId: ELEVENLABS_VOICE_ID })
+          body: JSON.stringify({ text, voiceId: ELEVENLABS_VOICE_ID, voiceSettings })
         });
 
         // Vite dev server returns 200 OK with index.html for unknown routes.
@@ -119,7 +141,7 @@ export function speak(text, enabled = true, style = 'statement') {
             body: JSON.stringify({
               text: text,
               model_id: 'eleven_turbo_v2_5',
-              voice_settings: { stability: 0.5, similarity_boost: 0.75 }
+              voice_settings: voiceSettings
             })
           });
         }
@@ -130,7 +152,7 @@ export function speak(text, enabled = true, style = 'statement') {
 
         const blob = await response.blob();
         audioUrl = URL.createObjectURL(blob);
-        elevenLabsCache.set(text, audioUrl);
+        elevenLabsCache.set(cacheKey, audioUrl);
       }
 
       // Check if playback was cancelled while fetching
