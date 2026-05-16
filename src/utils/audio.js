@@ -84,72 +84,77 @@ export function speak(text, enabled = true, style = 'statement') {
     playId++;
     const currentPlayId = playId;
 
-    const apiKey = import.meta.env.VITE_ELEVENLABS_API_KEY;
+    // Check if we have a locally exposed key (ONLY FOR LOCAL DEVELOPMENT)
+    const localApiKey = import.meta.env.VITE_ELEVENLABS_API_KEY;
 
-    if (apiKey) {
+    window.speechSynthesis?.cancel(); // Cancel any fallback speech
+    isSpeaking = true;
+
+    try {
+      let audioUrl = elevenLabsCache.get(text);
+      
+      if (!audioUrl) {
+        // 1. Try hitting the Vercel secure backend first
+        let response = await fetch(`/api/elevenlabs`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ text, voiceId: ELEVENLABS_VOICE_ID })
+        });
+
+        // 2. If backend fails (e.g., 404 because we are running Vite locally via 'npm run dev'),
+        //    AND we have a local Vite API key, fallback to direct ElevenLabs request.
+        if (!response.ok && localApiKey) {
+          console.warn("Secure backend not found (likely local dev). Falling back to direct API call.");
+          response = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${ELEVENLABS_VOICE_ID}`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'xi-api-key': localApiKey,
+            },
+            body: JSON.stringify({
+              text: text,
+              model_id: 'eleven_turbo_v2_5',
+              voice_settings: { stability: 0.5, similarity_boost: 0.75 }
+            })
+          });
+        }
+
+        if (!response.ok) {
+          throw new Error("Failed to fetch audio from both secure backend and direct fallback.");
+        }
+
+        const blob = await response.blob();
+        audioUrl = URL.createObjectURL(blob);
+        elevenLabsCache.set(text, audioUrl);
+      }
+
+      // Check if playback was cancelled while fetching
+      if (currentPlayId !== playId) {
+        isSpeaking = false;
+        resolve();
+        return;
+      }
+
       if (currentAudio) {
         currentAudio.pause();
         currentAudio.currentTime = 0;
       }
-      window.speechSynthesis?.cancel(); // Cancel any fallback speech
-      isSpeaking = true;
 
-      try {
-        let audioUrl = elevenLabsCache.get(text);
-        
-        if (!audioUrl) {
-          const response = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${ELEVENLABS_VOICE_ID}`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'xi-api-key': apiKey,
-            },
-            body: JSON.stringify({
-              text: text,
-              model_id: 'eleven_turbo_v2_5', // Fastest model, great for narration
-              voice_settings: {
-                stability: 0.5,
-                similarity_boost: 0.75
-              }
-            })
-          });
+      currentAudio = new Audio(audioUrl);
+      currentAudio.onended = () => {
+        isSpeaking = false;
+        resolve();
+      };
+      currentAudio.onerror = () => {
+        isSpeaking = false;
+        resolve();
+      };
+      
+      await currentAudio.play();
+      return; // Success, skip fallback
 
-          if (!response.ok) {
-            console.error("ElevenLabs API error:", response.statusText);
-            throw new Error("ElevenLabs API failed");
-          }
-
-          const blob = await response.blob();
-          audioUrl = URL.createObjectURL(blob);
-          elevenLabsCache.set(text, audioUrl);
-        }
-
-        // Check if playback was cancelled while fetching
-        if (currentPlayId !== playId) {
-          isSpeaking = false;
-          resolve();
-          return;
-        }
-
-        currentAudio = new Audio(audioUrl);
-        currentAudio.onended = () => {
-          isSpeaking = false;
-          resolve();
-        };
-        currentAudio.onerror = () => {
-          isSpeaking = false;
-          resolve();
-        };
-        
-        await currentAudio.play();
-        return; // Success, skip fallback
-
-      } catch (error) {
-        console.error("Falling back to Web Speech API", error);
-        runWebSpeechFallback(text, style, resolve);
-      }
-    } else {
-      // Use Web Speech API
+    } catch (error) {
+      console.error("ElevenLabs failed, falling back to Web Speech API:", error);
       runWebSpeechFallback(text, style, resolve);
     }
   });
