@@ -10,7 +10,8 @@ let currentAudio = null;   // Active HTMLAudioElement for ElevenLabs
 let playId = 0;            // Counter to prevent delayed playback
 const elevenLabsCache = new Map(); // Cache generated audio URLs
 
-const ELEVENLABS_VOICE_ID = 'EXAVITQu4vr4xnSDxMaL'; // Sarah voice
+// Rachel - Very warm, natural American female teacher voice
+const ELEVENLABS_VOICE_ID = '21m00Tcm4TlvDq8ikWAM';
 
 // ─── Voice Selection ─────────────────────────────
 function getFemaleVoice() {
@@ -101,9 +102,13 @@ export function speak(text, enabled = true, style = 'statement') {
           body: JSON.stringify({ text, voiceId: ELEVENLABS_VOICE_ID })
         });
 
-        // 2. If backend fails (e.g., 404 because we are running Vite locally via 'npm run dev'),
-        //    AND we have a local Vite API key, fallback to direct ElevenLabs request.
-        if (!response.ok && localApiKey) {
+        // Vite dev server returns 200 OK with index.html for unknown routes.
+        // If content-type is HTML, the backend is not running (local dev mode).
+        const isHtmlFallback = (response.headers.get('content-type') || '').includes('text/html');
+
+        // 2. If backend fails (or is HTML fallback) AND we have a local Vite API key,
+        //    fallback to direct ElevenLabs request.
+        if ((!response.ok || isHtmlFallback) && localApiKey) {
           console.warn("Secure backend not found (likely local dev). Falling back to direct API call.");
           response = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${ELEVENLABS_VOICE_ID}`, {
             method: 'POST',
@@ -119,7 +124,7 @@ export function speak(text, enabled = true, style = 'statement') {
           });
         }
 
-        if (!response.ok) {
+        if (!response.ok || isHtmlFallback) {
           throw new Error("Failed to fetch audio from both secure backend and direct fallback.");
         }
 
