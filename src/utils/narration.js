@@ -162,7 +162,7 @@ const CORRECT_PHRASES = [
   "Brilliant! Keep up the amazing work!",
   "Perfect! You're getting so good at this!",
   "Yes! You nailed it!",
-  "Absolutely correct! Well done!",
+  "Absolutely correct! Excellent work!",
   "Amazing! You're on fire!",
   "Fantastic work! I'm so proud of you!",
   "Spot on! You really understand subtraction!",

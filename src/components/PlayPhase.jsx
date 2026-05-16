@@ -45,12 +45,7 @@ export default function PlayPhase({ onComplete, audioEnabled }) {
   const [worldComplete, setWorldComplete] = useState(false);
   const narrationRef = useRef(null);
   // Fresh random bank each time a world is selected
-  const [sessionBank, setSessionBank] = useState([]);
   const [worldQuestions, setWorldQuestions] = useState([]);
-
-  useEffect(() => {
-    setSessionBank(generateSessionQuestions());
-  }, []);
 
   const q = worldQuestions[qIndex];
 
@@ -68,12 +63,8 @@ export default function PlayPhase({ onComplete, audioEnabled }) {
   }, [qIndex, audioEnabled, q, worldComplete, feedback, currentWorld]);
 
   const startWorld = useCallback((worldId) => {
-    // Generate a fresh random bank if not generated
-    let bank = sessionBank;
-    if (bank.length === 0) {
-      bank = generateSessionQuestions();
-      setSessionBank(bank);
-    }
+    // Generate a fresh random bank every time a world starts
+    const bank = generateSessionQuestions();
     const filtered = bank.filter(q => q.world === worldId);
     setWorldQuestions(filtered);
     setCurrentWorld(worldId);
