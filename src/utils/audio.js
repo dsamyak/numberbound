@@ -93,19 +93,22 @@ export function speak(text, enabled = true, style = 'statement') {
 
     // Map our pedagogical styles to ElevenLabs emotional settings
     const getElevenLabsSettings = (speechStyle) => {
+      // Lower stability = Less robotic, more expressive and natural
+      // Higher similarity_boost = Stays truer to the specific voice ID you selected
+      // Higher style = More emotional inflection
       switch (speechStyle) {
         case 'celebration': 
-          return { stability: 0.3, similarity_boost: 0.8, style: 0.8 }; // High emotion, very expressive
+          return { stability: 0.2, similarity_boost: 0.85, style: 0.9 }; // Extremely emotional
         case 'encouragement': 
-          return { stability: 0.35, similarity_boost: 0.8, style: 0.6 }; // Warm, expressive
+          return { stability: 0.25, similarity_boost: 0.85, style: 0.8 }; // Very warm and expressive
         case 'question': 
-          return { stability: 0.4, similarity_boost: 0.8, style: 0.4 }; // Inquisitive tone
+          return { stability: 0.3, similarity_boost: 0.85, style: 0.6 }; // Inquisitive tone
         case 'thinking': 
-          return { stability: 0.6, similarity_boost: 0.8, style: 0.1 }; // Calmer, flatter tone
+          return { stability: 0.4, similarity_boost: 0.8, style: 0.3 }; // Calmer, thoughtful
         case 'emphasis': 
-          return { stability: 0.5, similarity_boost: 0.8, style: 0.5 }; // Clear and deliberate
+          return { stability: 0.25, similarity_boost: 0.85, style: 0.7 }; // Dynamic and clear
         default: // statement, instruction
-          return { stability: 0.5, similarity_boost: 0.75, style: 0.3 }; // Balanced
+          return { stability: 0.3, similarity_boost: 0.85, style: 0.5 }; // Very natural baseline
       }
     };
 
