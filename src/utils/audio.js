@@ -10,8 +10,8 @@ let currentAudio = null;   // Active HTMLAudioElement for ElevenLabs
 let playId = 0;            // Counter to prevent delayed playback
 const elevenLabsCache = new Map(); // Cache generated audio URLs
 
-// Rachel - Very warm, natural American female teacher voice
-const ELEVENLABS_VOICE_ID = '21m00Tcm4TlvDq8ikWAM';
+// New voice ID specified by user
+const ELEVENLABS_VOICE_ID = '8N2ng9i2uiUWqstgmWlH';
 
 // ─── Voice Selection ─────────────────────────────
 function getFemaleVoice() {
@@ -117,11 +117,14 @@ export function speak(text, enabled = true, style = 'statement') {
       if (!audioUrl) {
         const voiceSettings = getElevenLabsSettings(style);
 
+        // Replace periods with commas to force ElevenLabs to read faster and pause less
+        const fastText = text.replace(/\.\s+/g, ', ').replace(/\.$/, '');
+
         // 1. Try hitting the Vercel secure backend first
         let response = await fetch(`/api/elevenlabs`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ text, voiceId: ELEVENLABS_VOICE_ID, voiceSettings })
+          body: JSON.stringify({ text: fastText, voiceId: ELEVENLABS_VOICE_ID, voiceSettings })
         });
 
         // Vite dev server returns 200 OK with index.html for unknown routes.
@@ -139,7 +142,7 @@ export function speak(text, enabled = true, style = 'statement') {
               'xi-api-key': localApiKey,
             },
             body: JSON.stringify({
-              text: text,
+              text: fastText,
               model_id: 'eleven_turbo_v2_5',
               voice_settings: voiceSettings
             })
@@ -227,15 +230,15 @@ export function seg(text, style = 'statement', pause = 400) {
   return { text, style, pause };
 }
 
-// Shorthand helpers for common segment types
-export const say = (text, pause = 400) => seg(text, 'statement', pause);
-export const ask = (text, pause = 1800) => seg(text, 'question', pause);  // longer pause for thinking
-export const cheer = (text, pause = 600) => seg(text, 'encouragement', pause);
-export const emphasize = (text, pause = 500) => seg(text, 'emphasis', pause);
-export const think = (text, pause = 2200) => seg(text, 'thinking', pause); // extra long thinking pause
-export const celebrate = (text, pause = 800) => seg(text, 'celebration', pause);
-export const instruct = (text, pause = 500) => seg(text, 'instruction', pause);
-export const pause = (ms = 1000) => seg('', 'statement', ms); // silent pause
+// Shorthand helpers for common segment types (reduced pauses for faster flow)
+export const say = (text, pause = 150) => seg(text, 'statement', pause);
+export const ask = (text, pause = 800) => seg(text, 'question', pause);  
+export const cheer = (text, pause = 200) => seg(text, 'encouragement', pause);
+export const emphasize = (text, pause = 200) => seg(text, 'emphasis', pause);
+export const think = (text, pause = 1000) => seg(text, 'thinking', pause); 
+export const celebrate = (text, pause = 300) => seg(text, 'celebration', pause);
+export const instruct = (text, pause = 200) => seg(text, 'instruction', pause);
+export const pause = (ms = 500) => seg('', 'statement', ms); // silent pause
 
 
 // ─── Narrate: play a sequence of segments ───────
