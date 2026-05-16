@@ -6,6 +6,11 @@
 let cachedVoice = null;
 let currentQueue = null;   // active narration queue id
 let isSpeaking = false;
+let currentAudio = null;   // Active HTMLAudioElement for ElevenLabs
+let playId = 0;            // Counter to prevent delayed playback
+const elevenLabsCache = new Map(); // Cache generated audio URLs
+
+const ELEVENLABS_VOICE_ID = 'EXAVITQu4vr4xnSDxMaL'; // Sarah voice
 
 // ─── Voice Selection ─────────────────────────────
 function getFemaleVoice() {
@@ -70,32 +75,107 @@ const SPEECH_STYLES = {
 
 // ─── Core: speak a single text ──────────────────
 export function speak(text, enabled = true, style = 'statement') {
-  return new Promise((resolve) => {
-    if (!enabled || !window.speechSynthesis || !text) {
+  return new Promise(async (resolve) => {
+    if (!enabled || !text) {
       resolve();
       return;
     }
-    const styleParams = SPEECH_STYLES[style] || SPEECH_STYLES.statement;
-    const utterance = new SpeechSynthesisUtterance(text);
-    utterance.rate = styleParams.rate;
-    utterance.pitch = styleParams.pitch;
-    utterance.volume = styleParams.volume;
 
-    const voice = getFemaleVoice();
-    if (voice) {
-      utterance.voice = voice;
-      utterance.lang = voice.lang;
+    playId++;
+    const currentPlayId = playId;
+
+    const apiKey = import.meta.env.VITE_ELEVENLABS_API_KEY;
+
+    if (apiKey) {
+      if (currentAudio) {
+        currentAudio.pause();
+        currentAudio.currentTime = 0;
+      }
+      window.speechSynthesis?.cancel(); // Cancel any fallback speech
+      isSpeaking = true;
+
+      try {
+        let audioUrl = elevenLabsCache.get(text);
+        
+        if (!audioUrl) {
+          const response = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${ELEVENLABS_VOICE_ID}`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'xi-api-key': apiKey,
+            },
+            body: JSON.stringify({
+              text: text,
+              model_id: 'eleven_turbo_v2_5', // Fastest model, great for narration
+              voice_settings: {
+                stability: 0.5,
+                similarity_boost: 0.75
+              }
+            })
+          });
+
+          if (!response.ok) {
+            console.error("ElevenLabs API error:", response.statusText);
+            throw new Error("ElevenLabs API failed");
+          }
+
+          const blob = await response.blob();
+          audioUrl = URL.createObjectURL(blob);
+          elevenLabsCache.set(text, audioUrl);
+        }
+
+        // Check if playback was cancelled while fetching
+        if (currentPlayId !== playId) {
+          isSpeaking = false;
+          resolve();
+          return;
+        }
+
+        currentAudio = new Audio(audioUrl);
+        currentAudio.onended = () => {
+          isSpeaking = false;
+          resolve();
+        };
+        currentAudio.onerror = () => {
+          isSpeaking = false;
+          resolve();
+        };
+        
+        await currentAudio.play();
+        return; // Success, skip fallback
+
+      } catch (error) {
+        console.error("Falling back to Web Speech API", error);
+        runWebSpeechFallback(text, style, resolve);
+      }
     } else {
-      utterance.lang = 'en-GB';
+      // Use Web Speech API
+      runWebSpeechFallback(text, style, resolve);
     }
-
-    utterance.onend = () => { isSpeaking = false; resolve(); };
-    utterance.onerror = () => { isSpeaking = false; resolve(); };
-
-    window.speechSynthesis.cancel();
-    isSpeaking = true;
-    window.speechSynthesis.speak(utterance);
   });
+}
+
+function runWebSpeechFallback(text, style, resolve) {
+  const styleParams = SPEECH_STYLES[style] || SPEECH_STYLES.statement;
+  const utterance = new SpeechSynthesisUtterance(text);
+  utterance.rate = styleParams.rate;
+  utterance.pitch = styleParams.pitch;
+  utterance.volume = styleParams.volume;
+
+  const voice = getFemaleVoice();
+  if (voice) {
+    utterance.voice = voice;
+    utterance.lang = voice.lang;
+  } else {
+    utterance.lang = 'en-GB';
+  }
+
+  utterance.onend = () => { isSpeaking = false; resolve(); };
+  utterance.onerror = () => { isSpeaking = false; resolve(); };
+
+  window.speechSynthesis.cancel();
+  isSpeaking = true;
+  window.speechSynthesis.speak(utterance);
 }
 
 
@@ -174,8 +254,14 @@ export function narrate(segments, enabled = true) {
 
 // ─── Stop all narration ─────────────────────────
 export function stopNarration() {
+  playId++; // Invalidate any pending ElevenLabs fetches
   currentQueue = null;
   window.speechSynthesis?.cancel();
+  if (currentAudio) {
+    currentAudio.pause();
+    currentAudio.currentTime = 0;
+    currentAudio = null;
+  }
   isSpeaking = false;
 }
 
