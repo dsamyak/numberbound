@@ -20,8 +20,8 @@ const STORY_SLIDES = [
   {
     image: '/images/story_barmodel.png',
     title: 'The Number Bond Secret',
-    text: 'Wei Ming drew a special picture called a number bond. He put the whole 7 at the top. Then he made two branches for the parts: 3 for Priya, and 4 for him. "The whole minus a part equals the other part!" he said.',
-    highlight: '"Whole – Part = Part!"',
+    text: 'Wei Ming drew a special picture called a number bond. He put the whole 8 at the top. Then he made two branches for the parts: 3 for Priya, and 5 for him. "The whole minus a part equals the other part!" he said.',
+    highlight: '"Whole minus Part equals Part!"',
     mascotText: "Crack the number bond! 🧩",
   },
   {
@@ -55,8 +55,8 @@ export default function StoryPhase({ onComplete, audioEnabled }) {
 
   useEffect(() => {
     setTextVis(false); setHlVis(false);
-    const t1 = setTimeout(() => setTextVis(true), 400);
-    const t2 = setTimeout(() => setHlVis(true), 1800);
+    const t1 = setTimeout(() => setTextVis(true), 100);
+    const t2 = setTimeout(() => setHlVis(true), 800);
     return () => { clearTimeout(t1); clearTimeout(t2); };
   }, [slide]);
 

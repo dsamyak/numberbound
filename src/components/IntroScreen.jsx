@@ -18,7 +18,7 @@ export default function IntroScreen({ onStart, audioEnabled, onToggleAudio }) {
     if (audioEnabled) {
       const timer = setTimeout(() => {
         narrationRef.current = narrate(introNarration(), true);
-      }, 800);
+      }, 200);
       return () => {
         clearTimeout(timer);
         narrationRef.current?.cancel();

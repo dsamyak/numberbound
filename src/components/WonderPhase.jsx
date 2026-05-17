@@ -55,8 +55,8 @@ export default function WonderPhase({ onComplete, audioEnabled }) {
   }, [wonder]);
 
   useEffect(() => {
-    const t1 = setTimeout(() => setStage(1), 800);
-    const t2 = setTimeout(() => setStage(2), 2000);
+    const t1 = setTimeout(() => setStage(1), 300);
+    const t2 = setTimeout(() => setStage(2), 1200);
     return () => { clearTimeout(t1); clearTimeout(t2); };
   }, []);
 

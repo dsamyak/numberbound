@@ -10,8 +10,18 @@ let currentAudio = null;   // Active HTMLAudioElement for ElevenLabs
 let playId = 0;            // Counter to prevent delayed playback
 const elevenLabsCache = new Map(); // Cache generated audio URLs
 
-// New voice ID specified by user
+// New voice ID specified by user (Rachel - free default voice)
 const ELEVENLABS_VOICE_ID = '8N2ng9i2uiUWqstgmWlH';
+
+let audioMap = {};
+try {
+  // Import the generated map if it exists
+  import('./audioMap.js').then(module => {
+    audioMap = module.audioMap || {};
+  }).catch(() => {
+    // Ignore if not present yet
+  });
+} catch (e) { }
 
 // ─── Voice Selection ─────────────────────────────
 function getFemaleVoice() {
@@ -100,8 +110,14 @@ const getElevenLabsSettings = (speechStyle) => {
 };
 
 export async function getAudioUrl(text, style) {
+  // 1. Check if we have a pre-generated static audio file for this exact text
+  if (audioMap && audioMap[text]) {
+    // Return the static asset URL
+    return audioMap[text];
+  }
+
   const cacheKey = `${text}_${style}`;
-  
+
   if (elevenLabsCache.has(cacheKey)) {
     return elevenLabsCache.get(cacheKey);
   }
@@ -122,7 +138,7 @@ export async function getAudioUrl(text, style) {
       response = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${ELEVENLABS_VOICE_ID}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'xi-api-key': localApiKey },
-        body: JSON.stringify({ text, model_id: 'eleven_multilingual_v2', voiceSettings })
+        body: JSON.stringify({ text, model_id: 'eleven_multilingual_v2', voice_settings: voiceSettings })
       });
     }
 
@@ -136,10 +152,10 @@ export async function getAudioUrl(text, style) {
 
   // Cache the promise so concurrent requests for the same text don't trigger multiple network calls
   elevenLabsCache.set(cacheKey, fetchPromise);
-  
+
   // If it fails, remove it from the cache so we can try again later
   fetchPromise.catch(() => elevenLabsCache.delete(cacheKey));
-  
+
   return fetchPromise;
 }
 
@@ -232,14 +248,14 @@ export function seg(text, style = 'statement', pause = 400) {
 }
 
 // Shorthand helpers for common segment types (reduced pauses for faster flow)
-export const say = (text, pause = 150) => seg(text, 'statement', pause);
-export const ask = (text, pause = 800) => seg(text, 'question', pause);
-export const cheer = (text, pause = 200) => seg(text, 'encouragement', pause);
-export const emphasize = (text, pause = 200) => seg(text, 'emphasis', pause);
-export const think = (text, pause = 1000) => seg(text, 'thinking', pause);
-export const celebrate = (text, pause = 300) => seg(text, 'celebration', pause);
-export const instruct = (text, pause = 200) => seg(text, 'instruction', pause);
-export const pause = (ms = 500) => seg('', 'statement', ms); // silent pause
+export const say = (text, pause = 0) => seg(text, 'statement', pause);
+export const ask = (text, pause = 0) => seg(text, 'question', pause);
+export const cheer = (text, pause = 0) => seg(text, 'encouragement', pause);
+export const emphasize = (text, pause = 0) => seg(text, 'emphasis', pause);
+export const think = (text, pause = 0) => seg(text, 'thinking', pause);
+export const celebrate = (text, pause = 0) => seg(text, 'celebration', pause);
+export const instruct = (text, pause = 0) => seg(text, 'instruction', pause);
+export const pause = (ms = 0) => seg('', 'statement', ms); // silent pause
 
 /**
  * Preload all audio for a sequence of segments so there is zero latency when playing.
@@ -248,7 +264,7 @@ export function preloadNarration(segments) {
   if (!segments) return;
   segments.forEach(seg => {
     if (seg.text && seg.text.trim()) {
-      getAudioUrl(seg.text, seg.style).catch(() => {});
+      getAudioUrl(seg.text, seg.style).catch(() => { });
     }
   });
 }
