@@ -77,6 +77,72 @@ const SPEECH_STYLES = {
 };
 
 
+// Map our pedagogical styles to ElevenLabs emotional settings
+const getElevenLabsSettings = (speechStyle) => {
+  // MAXIMUM HUMANIZATION (optimized for eleven_multilingual_v2):
+  // - Lower stability (~0.20-0.30): Allows natural breathing, vocal fry, and emotive inflection
+  // - Lower similarity_boost (~0.50-0.65): Removes all robotic artifacts and rigidity
+  // - Moderate style (~0.30-0.50): Adds warmth without breaking the voice
+  switch (speechStyle) {
+    case 'celebration':
+      return { stability: 0.12, similarity_boost: 0.45, style: 0.75, use_speaker_boost: true };
+    case 'encouragement':
+      return { stability: 0.16, similarity_boost: 0.50, style: 0.65, use_speaker_boost: true };
+    case 'question':
+      return { stability: 0.20, similarity_boost: 0.55, style: 0.55, use_speaker_boost: true };
+    case 'emphasis':
+      return { stability: 0.16, similarity_boost: 0.50, style: 0.60, use_speaker_boost: true };
+    case 'thinking':
+      return { stability: 0.24, similarity_boost: 0.60, style: 0.35, use_speaker_boost: true };
+    default: // statement, instruction
+      return { stability: 0.20, similarity_boost: 0.55, style: 0.50, use_speaker_boost: true };
+  }
+};
+
+export async function getAudioUrl(text, style) {
+  const cacheKey = `${text}_${style}`;
+  
+  if (elevenLabsCache.has(cacheKey)) {
+    return elevenLabsCache.get(cacheKey);
+  }
+
+  const fetchPromise = (async () => {
+    const localApiKey = import.meta.env.VITE_ELEVENLABS_API_KEY;
+    const voiceSettings = getElevenLabsSettings(style);
+
+    let response = await fetch(`/api/elevenlabs`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text, voiceId: ELEVENLABS_VOICE_ID, voiceSettings })
+    });
+
+    const isHtmlFallback = (response.headers.get('content-type') || '').includes('text/html');
+
+    if ((!response.ok || isHtmlFallback) && localApiKey) {
+      response = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${ELEVENLABS_VOICE_ID}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'xi-api-key': localApiKey },
+        body: JSON.stringify({ text, model_id: 'eleven_multilingual_v2', voiceSettings })
+      });
+    }
+
+    if (!response.ok || isHtmlFallback) {
+      throw new Error("Failed to fetch audio from both secure backend and direct fallback.");
+    }
+
+    const blob = await response.blob();
+    return URL.createObjectURL(blob);
+  })();
+
+  // Cache the promise so concurrent requests for the same text don't trigger multiple network calls
+  elevenLabsCache.set(cacheKey, fetchPromise);
+  
+  // If it fails, remove it from the cache so we can try again later
+  fetchPromise.catch(() => elevenLabsCache.delete(cacheKey));
+  
+  return fetchPromise;
+}
+
 // ─── Core: speak a single text ──────────────────
 export function speak(text, enabled = true, style = 'statement') {
   return new Promise(async (resolve) => {
@@ -87,83 +153,11 @@ export function speak(text, enabled = true, style = 'statement') {
 
     playId++;
     const currentPlayId = playId;
-
-    // Check if we have a locally exposed key (ONLY FOR LOCAL DEVELOPMENT)
-    const localApiKey = import.meta.env.VITE_ELEVENLABS_API_KEY;
-
     window.speechSynthesis?.cancel(); // Cancel any fallback speech
     isSpeaking = true;
 
-    // Map our pedagogical styles to ElevenLabs emotional settings
-    const getElevenLabsSettings = (speechStyle) => {
-      // MAXIMUM HUMANIZATION (optimized for eleven_multilingual_v2):
-      // - Lower stability (~0.20-0.30): Allows natural breathing, vocal fry, and emotive inflection
-      // - Lower similarity_boost (~0.50-0.65): Removes all robotic artifacts and rigidity
-      // - Moderate style (~0.30-0.50): Adds warmth without breaking the voice
-      switch (speechStyle) {
-        case 'celebration':
-          return { stability: 0.15, similarity_boost: 0.50, style: 0.60, use_speaker_boost: true };
-        case 'encouragement':
-          return { stability: 0.20, similarity_boost: 0.55, style: 0.50, use_speaker_boost: true };
-        case 'question':
-          return { stability: 0.25, similarity_boost: 0.60, style: 0.40, use_speaker_boost: true };
-        case 'emphasis':
-          return { stability: 0.20, similarity_boost: 0.55, style: 0.45, use_speaker_boost: true };
-        case 'thinking':
-          return { stability: 0.30, similarity_boost: 0.65, style: 0.25, use_speaker_boost: true };
-        default: // statement, instruction
-          return { stability: 0.25, similarity_boost: 0.60, style: 0.40, use_speaker_boost: true };
-      }
-    };
-
     try {
-      // Cache key now includes style so we don't mix up emotional states for the same text
-      const cacheKey = `${text}_${style}`;
-      let audioUrl = elevenLabsCache.get(cacheKey);
-
-      if (!audioUrl) {
-        const voiceSettings = getElevenLabsSettings(style);
-
-        // Replace periods with commas to force ElevenLabs to read faster and pause less
-        const fastText = text.replace(/\.\s+/g, ', ').replace(/\.$/, '');
-
-        // 1. Try hitting the Vercel secure backend first
-        let response = await fetch(`/api/elevenlabs`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ text: fastText, voiceId: ELEVENLABS_VOICE_ID, voiceSettings })
-        });
-
-        // Vite dev server returns 200 OK with index.html for unknown routes.
-        // If content-type is HTML, the backend is not running (local dev mode).
-        const isHtmlFallback = (response.headers.get('content-type') || '').includes('text/html');
-
-        // 2. If backend fails (or is HTML fallback) AND we have a local Vite API key,
-        //    fallback to direct ElevenLabs request.
-        if ((!response.ok || isHtmlFallback) && localApiKey) {
-          console.warn("Secure backend not found (likely local dev). Falling back to direct API call.");
-          response = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${ELEVENLABS_VOICE_ID}`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'xi-api-key': localApiKey,
-            },
-            body: JSON.stringify({
-              text: fastText,
-              model_id: 'eleven_multilingual_v2',
-              voice_settings: voiceSettings
-            })
-          });
-        }
-
-        if (!response.ok || isHtmlFallback) {
-          throw new Error("Failed to fetch audio from both secure backend and direct fallback.");
-        }
-
-        const blob = await response.blob();
-        audioUrl = URL.createObjectURL(blob);
-        elevenLabsCache.set(cacheKey, audioUrl);
-      }
+      const audioUrl = await getAudioUrl(text, style);
 
       // Check if playback was cancelled while fetching
       if (currentPlayId !== playId) {
@@ -274,9 +268,18 @@ export function narrate(segments, enabled = true) {
   const promise = (async () => {
     if (!enabled || !segments || segments.length === 0) return;
 
-    for (const segment of segments) {
-      // If this queue was cancelled or replaced by a new narration, stop
+    for (let i = 0; i < segments.length; i++) {
+      const segment = segments[i];
       if (cancelled || currentQueue !== queueId) return;
+
+      // PRELOAD the next segment in the background to eliminate loading latency!
+      if (i + 1 < segments.length) {
+        const nextSeg = segments[i + 1];
+        if (nextSeg.text && nextSeg.text.trim()) {
+          // Fire and forget preload (the promise is cached)
+          getAudioUrl(nextSeg.text, nextSeg.style).catch(console.error);
+        }
+      }
 
       // Speak the text (skip if empty — used for silent pauses)
       if (segment.text && segment.text.trim()) {
