@@ -96,23 +96,23 @@ export function speak(text, enabled = true, style = 'statement') {
 
     // Map our pedagogical styles to ElevenLabs emotional settings
     const getElevenLabsSettings = (speechStyle) => {
-      // For a warm, human-like, emotional teacher voice:
-      // - Moderate stability (~0.3-0.4) allows natural emotional variation without getting weird
-      // - Lower similarity_boost (~0.7) gives the AI freedom to express emotion naturally
-      // - Higher style (~0.6-0.8) amplifies the emotional warmth and expression
+      // MAXIMUM HUMANIZATION (optimized for eleven_multilingual_v2):
+      // - Lower stability (~0.20-0.30): Allows natural breathing, vocal fry, and emotive inflection
+      // - Lower similarity_boost (~0.50-0.65): Removes all robotic artifacts and rigidity
+      // - Moderate style (~0.30-0.50): Adds warmth without breaking the voice
       switch (speechStyle) {
         case 'celebration':
-          return { stability: 0.25, similarity_boost: 0.70, style: 0.85, use_speaker_boost: true };
+          return { stability: 0.15, similarity_boost: 0.50, style: 0.60, use_speaker_boost: true };
         case 'encouragement':
-          return { stability: 0.30, similarity_boost: 0.70, style: 0.80, use_speaker_boost: true };
+          return { stability: 0.20, similarity_boost: 0.55, style: 0.50, use_speaker_boost: true };
         case 'question':
-          return { stability: 0.35, similarity_boost: 0.75, style: 0.70, use_speaker_boost: true };
+          return { stability: 0.25, similarity_boost: 0.60, style: 0.40, use_speaker_boost: true };
         case 'emphasis':
-          return { stability: 0.30, similarity_boost: 0.70, style: 0.75, use_speaker_boost: true };
+          return { stability: 0.20, similarity_boost: 0.55, style: 0.45, use_speaker_boost: true };
         case 'thinking':
-          return { stability: 0.45, similarity_boost: 0.80, style: 0.40, use_speaker_boost: true };
+          return { stability: 0.30, similarity_boost: 0.65, style: 0.25, use_speaker_boost: true };
         default: // statement, instruction
-          return { stability: 0.35, similarity_boost: 0.75, style: 0.65, use_speaker_boost: true };
+          return { stability: 0.25, similarity_boost: 0.60, style: 0.40, use_speaker_boost: true };
       }
     };
 
@@ -150,7 +150,7 @@ export function speak(text, enabled = true, style = 'statement') {
             },
             body: JSON.stringify({
               text: fastText,
-              model_id: 'eleven_turbo_v2_5',
+              model_id: 'eleven_multilingual_v2',
               voice_settings: voiceSettings
             })
           });
