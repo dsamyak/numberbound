@@ -3,7 +3,7 @@
 // Natural, teacher-like speech for young learners
 // ──────────────────────────────────────────────────
 
-let cachedVoice = null;
+
 let currentQueue = null;   // active narration queue id
 let isSpeaking = false;
 let currentAudio = null;   // Active HTMLAudioElement for ElevenLabs
@@ -23,40 +23,6 @@ try {
   });
 } catch (e) { }
 
-// ─── Voice Selection ─────────────────────────────
-function getFemaleVoice() {
-  if (cachedVoice) return cachedVoice;
-  const voices = window.speechSynthesis?.getVoices() || [];
-
-  // Priority: natural-sounding female voices
-  const preferred = [
-    'Microsoft Jenny Online', 'Microsoft Zira', 'Google UK English Female',
-    'Google US English', 'Samantha', 'Karen', 'Moira', 'Fiona',
-    'Microsoft Hazel Online', 'Microsoft Susan',
-  ];
-  for (const name of preferred) {
-    const found = voices.find(v => v.name.includes(name));
-    if (found) { cachedVoice = found; return found; }
-  }
-
-  // Fallback: any female-sounding English voice
-  const female = voices.find(v =>
-    v.lang.startsWith('en') &&
-    (/female|woman|girl|zira|hazel|jenny|samantha|karen|fiona|moira|susan/i.test(v.name))
-  );
-  if (female) { cachedVoice = female; return female; }
-
-  // Final fallback: first English voice
-  const english = voices.find(v => v.lang.startsWith('en'));
-  if (english) { cachedVoice = english; return english; }
-  return null;
-}
-
-// Preload voices (Chrome loads them async)
-if (window.speechSynthesis) {
-  window.speechSynthesis.getVoices();
-  window.speechSynthesis.onvoiceschanged = () => { cachedVoice = null; getFemaleVoice(); };
-}
 
 
 // ─── Speech Types (vary pitch/rate for natural delivery) ──
@@ -201,34 +167,13 @@ export function speak(text, enabled = true, style = 'statement') {
       return; // Success, skip fallback
 
     } catch (error) {
-      console.error("ElevenLabs failed, falling back to Web Speech API:", error);
-      runWebSpeechFallback(text, style, resolve);
+      console.error("ElevenLabs failed, and fallback is disabled:", error);
+      isSpeaking = false;
+      resolve();
     }
   });
 }
 
-function runWebSpeechFallback(text, style, resolve) {
-  const styleParams = SPEECH_STYLES[style] || SPEECH_STYLES.statement;
-  const utterance = new SpeechSynthesisUtterance(text);
-  utterance.rate = styleParams.rate;
-  utterance.pitch = styleParams.pitch;
-  utterance.volume = styleParams.volume;
-
-  const voice = getFemaleVoice();
-  if (voice) {
-    utterance.voice = voice;
-    utterance.lang = voice.lang;
-  } else {
-    utterance.lang = 'en-GB';
-  }
-
-  utterance.onend = () => { isSpeaking = false; resolve(); };
-  utterance.onerror = () => { isSpeaking = false; resolve(); };
-
-  window.speechSynthesis.cancel();
-  isSpeaking = true;
-  window.speechSynthesis.speak(utterance);
-}
 
 
 // ─── Narration Segment Types ────────────────────
