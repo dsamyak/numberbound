@@ -50,27 +50,30 @@ if (window.speechSynthesis) {
 
 
 // ─── Speech Types (vary pitch/rate for natural delivery) ──
+// Optimized for young learners (6-8 years old)
+// Higher pitch = More engaging for children
+// Slower rates = Better comprehension and emphasis
 const SPEECH_STYLES = {
-  // Normal teaching voice
-  statement: { rate: 0.88, pitch: 1.12, volume: 0.9 },
+  // Normal teaching voice - warm and conversational
+  statement: { rate: 0.85, pitch: 1.18, volume: 0.95 },
 
-  // Questions — slightly higher pitch, slower for emphasis
-  question: { rate: 0.82, pitch: 1.22, volume: 0.92 },
+  // Questions — higher pitch, slower for emphasis, encourages engagement
+  question: { rate: 0.78, pitch: 1.32, volume: 0.98 },
 
-  // Encouragement — warm, upbeat
-  encouragement: { rate: 0.92, pitch: 1.28, volume: 0.95 },
+  // Encouragement — warm, upbeat, excited to support learning
+  encouragement: { rate: 0.90, pitch: 1.35, volume: 1.0 },
 
-  // Emphasis on key numbers/words — slower, clearer
-  emphasis: { rate: 0.78, pitch: 1.18, volume: 0.95 },
+  // Emphasis on key numbers/words — slower, clearer, friendly
+  emphasis: { rate: 0.72, pitch: 1.25, volume: 0.98 },
 
-  // Thinking prompt — gentle, inviting
-  thinking: { rate: 0.80, pitch: 1.08, volume: 0.85 },
+  // Thinking prompt — gentle, inviting, curious
+  thinking: { rate: 0.80, pitch: 1.15, volume: 0.92 },
 
-  // Celebration — excited, faster
-  celebration: { rate: 0.95, pitch: 1.35, volume: 1.0 },
+  // Celebration — excited, faster, joyful
+  celebration: { rate: 0.98, pitch: 1.42, volume: 1.0 },
 
-  // Gentle instruction
-  instruction: { rate: 0.85, pitch: 1.10, volume: 0.88 },
+  // Gentle instruction — clear and encouraging
+  instruction: { rate: 0.82, pitch: 1.20, volume: 0.95 },
 };
 
 
@@ -93,22 +96,23 @@ export function speak(text, enabled = true, style = 'statement') {
 
     // Map our pedagogical styles to ElevenLabs emotional settings
     const getElevenLabsSettings = (speechStyle) => {
-      // Lower stability = Less robotic, more expressive and natural
-      // Higher similarity_boost = Stays truer to the specific voice ID you selected
-      // Higher style = More emotional inflection
+      // For a warm, human-like, emotional teacher voice:
+      // - Moderate stability (~0.3-0.4) allows natural emotional variation without getting weird
+      // - Lower similarity_boost (~0.7) gives the AI freedom to express emotion naturally
+      // - Higher style (~0.6-0.8) amplifies the emotional warmth and expression
       switch (speechStyle) {
         case 'celebration':
-          return { stability: 0.2, similarity_boost: 0.85, style: 0.9 }; // Extremely emotional
+          return { stability: 0.25, similarity_boost: 0.70, style: 0.85, use_speaker_boost: true };
         case 'encouragement':
-          return { stability: 0.25, similarity_boost: 0.85, style: 0.8 }; // Very warm and expressive
+          return { stability: 0.30, similarity_boost: 0.70, style: 0.80, use_speaker_boost: true };
         case 'question':
-          return { stability: 0.3, similarity_boost: 0.85, style: 0.6 }; // Inquisitive tone
-        case 'thinking':
-          return { stability: 0.4, similarity_boost: 0.8, style: 0.3 }; // Calmer, thoughtful
+          return { stability: 0.35, similarity_boost: 0.75, style: 0.70, use_speaker_boost: true };
         case 'emphasis':
-          return { stability: 0.25, similarity_boost: 0.85, style: 0.7 }; // Dynamic and clear
+          return { stability: 0.30, similarity_boost: 0.70, style: 0.75, use_speaker_boost: true };
+        case 'thinking':
+          return { stability: 0.45, similarity_boost: 0.80, style: 0.40, use_speaker_boost: true };
         default: // statement, instruction
-          return { stability: 0.3, similarity_boost: 0.85, style: 0.5 }; // Very natural baseline
+          return { stability: 0.35, similarity_boost: 0.75, style: 0.65, use_speaker_boost: true };
       }
     };
 
