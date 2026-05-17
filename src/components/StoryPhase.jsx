@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { narrate, stopNarration } from '../utils/audio';
+import { narrate, stopNarration, preloadNarration } from '../utils/audio';
 import { getStoryNarration } from '../utils/narration';
 
 const STORY_SLIDES = [
@@ -42,6 +42,16 @@ export default function StoryPhase({ onComplete, audioEnabled }) {
   const s = STORY_SLIDES[slide];
   const isLast = slide === STORY_SLIDES.length - 1;
   const pct = ((slide + 1) / STORY_SLIDES.length) * 100;
+
+  // Preload audio so it syncs perfectly with the UI animations!
+  useEffect(() => {
+    if (audioEnabled) {
+      preloadNarration(getStoryNarration(slide));
+      if (slide + 1 < STORY_SLIDES.length) {
+        preloadNarration(getStoryNarration(slide + 1));
+      }
+    }
+  }, [slide, audioEnabled]);
 
   useEffect(() => {
     setTextVis(false); setHlVis(false);

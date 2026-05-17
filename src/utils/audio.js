@@ -241,6 +241,17 @@ export const celebrate = (text, pause = 300) => seg(text, 'celebration', pause);
 export const instruct = (text, pause = 200) => seg(text, 'instruction', pause);
 export const pause = (ms = 500) => seg('', 'statement', ms); // silent pause
 
+/**
+ * Preload all audio for a sequence of segments so there is zero latency when playing.
+ */
+export function preloadNarration(segments) {
+  if (!segments) return;
+  segments.forEach(seg => {
+    if (seg.text && seg.text.trim()) {
+      getAudioUrl(seg.text, seg.style).catch(() => {});
+    }
+  });
+}
 
 // ─── Narrate: play a sequence of segments ───────
 /**
