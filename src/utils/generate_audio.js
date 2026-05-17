@@ -7,7 +7,7 @@ dotenv.config({ path: '.env.local' });
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const apiKey = process.env.VITE_ELEVENLABS_API_KEY;
-const voiceId = 'Xb7hH8MSUJpSbSDYk0k2'; // Alice
+const voiceId = '8N2ng9i2uiUWqstgmWlH';
 const audioDir = path.join(__dirname, '../public/assets/audio');
 
 if (!fs.existsSync(audioDir)) {

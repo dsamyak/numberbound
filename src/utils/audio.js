@@ -10,8 +10,8 @@ let currentAudio = null;   // Active HTMLAudioElement for ElevenLabs
 let playId = 0;            // Counter to prevent delayed playback
 const elevenLabsCache = new Map(); // Cache generated audio URLs
 
-// New voice ID specified by user (Rachel - free default voice)
-const ELEVENLABS_VOICE_ID = '8N2ng9i2uiUWqstgmWlH';
+// New voice ID specified by user (Alice - Clear, Engaging Educator)
+const ELEVENLABS_VOICE_ID = 'Xb7hH8MSUJpSbSDYk0k2';
 
 let audioMap = {};
 try {
