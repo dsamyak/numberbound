@@ -97,15 +97,15 @@ export function speak(text, enabled = true, style = 'statement') {
       // Higher similarity_boost = Stays truer to the specific voice ID you selected
       // Higher style = More emotional inflection
       switch (speechStyle) {
-        case 'celebration': 
+        case 'celebration':
           return { stability: 0.2, similarity_boost: 0.85, style: 0.9 }; // Extremely emotional
-        case 'encouragement': 
+        case 'encouragement':
           return { stability: 0.25, similarity_boost: 0.85, style: 0.8 }; // Very warm and expressive
-        case 'question': 
+        case 'question':
           return { stability: 0.3, similarity_boost: 0.85, style: 0.6 }; // Inquisitive tone
-        case 'thinking': 
+        case 'thinking':
           return { stability: 0.4, similarity_boost: 0.8, style: 0.3 }; // Calmer, thoughtful
-        case 'emphasis': 
+        case 'emphasis':
           return { stability: 0.25, similarity_boost: 0.85, style: 0.7 }; // Dynamic and clear
         default: // statement, instruction
           return { stability: 0.3, similarity_boost: 0.85, style: 0.5 }; // Very natural baseline
@@ -116,7 +116,7 @@ export function speak(text, enabled = true, style = 'statement') {
       // Cache key now includes style so we don't mix up emotional states for the same text
       const cacheKey = `${text}_${style}`;
       let audioUrl = elevenLabsCache.get(cacheKey);
-      
+
       if (!audioUrl) {
         const voiceSettings = getElevenLabsSettings(style);
 
@@ -182,7 +182,7 @@ export function speak(text, enabled = true, style = 'statement') {
         isSpeaking = false;
         resolve();
       };
-      
+
       await currentAudio.play();
       return; // Success, skip fallback
 
@@ -235,10 +235,10 @@ export function seg(text, style = 'statement', pause = 400) {
 
 // Shorthand helpers for common segment types (reduced pauses for faster flow)
 export const say = (text, pause = 150) => seg(text, 'statement', pause);
-export const ask = (text, pause = 800) => seg(text, 'question', pause);  
+export const ask = (text, pause = 800) => seg(text, 'question', pause);
 export const cheer = (text, pause = 200) => seg(text, 'encouragement', pause);
 export const emphasize = (text, pause = 200) => seg(text, 'emphasis', pause);
-export const think = (text, pause = 1000) => seg(text, 'thinking', pause); 
+export const think = (text, pause = 1000) => seg(text, 'thinking', pause);
 export const celebrate = (text, pause = 300) => seg(text, 'celebration', pause);
 export const instruct = (text, pause = 200) => seg(text, 'instruction', pause);
 export const pause = (ms = 500) => seg('', 'statement', ms); // silent pause
